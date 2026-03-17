@@ -30,8 +30,8 @@ from numba.core.typing.typeof import typeof
 from cre.transform.enumerizer import EnumerizerType
 from cre.transform.flattener import GenericFlattenerType
 
-# @njit(cache=True)
-@njit(cache=True, locals={"match_ptr_set" : i8[::1]})
+# @njit(cache=False)
+@njit(cache=False, locals={"match_ptr_set" : i8[::1]})
 def declare_skill_cands(memset, enumerizer, flattener, _how_part,
             uid, match_ptrs, tuple_type, var_tuple_type, cre_func_type):
     how_part = cast(_how_part, cre_func_type)
@@ -76,7 +76,7 @@ def declare_skill_cands(memset, enumerizer, flattener, _how_part,
 
 
 
-@njit(cache=True, locals={"match_ptr_set" : i8[::1]})
+@njit(cache=False, locals={"match_ptr_set" : i8[::1]})
 def declare_skill_const(memset, flattener, how_part, uid, match_ptrs, tuple_type, var_tuple_type):
     for i in range(len(match_ptrs)):
         match_ptr_set = match_ptrs[i]
@@ -86,7 +86,7 @@ def declare_skill_const(memset, flattener, how_part, uid, match_ptrs, tuple_type
         j = 0
         for m in literal_unroll(match):
             t_id, _, _ = decode_idrec(m.idrec)
-            var = flattener.get_base_var(t_id, cre_obj_get_item(m, unicode_type,0))
+            var = flattener.base_var_map[(t_id, cre_obj_get_item(m, unicode_type,0))]
             var_ptrs[j] = cast(var, i8)
             j += 1
 
@@ -106,7 +106,7 @@ def get_declare_skill_cands_impl(how_part):
         if(return_type not in _declare_skill_cands_cache):
             tuple_type = Tuple(tuple([TypeRef(CREObjType)]))
             var_tuple_type = Tuple(tuple([TypeRef(VarType)]))
-            @njit(types.void(MemSetType, EnumerizerType, GenericFlattenerType, return_type, unicode_type, i8[:,::1]), cache=True)
+            @njit(types.void(MemSetType, EnumerizerType, GenericFlattenerType, return_type, unicode_type, i8[:,::1]), cache=False)
             def _declare_skill_const(memset, enumerizer, flattener, how_part, uid, match_ptrs):
                 declare_skill_const(memset, flattener, how_part, uid, match_ptrs, tuple_type, var_tuple_type)
             _declare_skill_cands_cache[return_type] = _declare_skill_const
@@ -118,7 +118,7 @@ def get_declare_skill_cands_impl(how_part):
         # call_type = types.FunctionType(sig)#.return_type(i8[::1]))
         # check_type = types.FunctionType(types.boolean(*sig.args))#.return_type(i8[::1]))
         
-        @njit(types.void(MemSetType, EnumerizerType, GenericFlattenerType, CREFuncType, unicode_type, i8[:,::1]), cache=True)
+        @njit(types.void(MemSetType, EnumerizerType, GenericFlattenerType, CREFuncType, unicode_type, i8[:,::1]), cache=False)
         def _declare_skill_cands(memset, enumerizer, flattener, how_part, uid, match_ptrs):
             declare_skill_cands(memset, enumerizer, flattener, how_part, uid,
              match_ptrs, tuple_type, var_tuple_type, cre_func_type)
@@ -189,13 +189,13 @@ def SkillCandidates(agent, state, feat_state):
 # -----------------------------------------------------------------
 # : Match
 
-@njit(types.void(MemSetType,GenericFlattenerType, i8[::1]), cache=True, locals={"match_ptr_set" : i8[::1]})
+@njit(types.void(MemSetType,GenericFlattenerType, i8[::1]), cache=False, locals={"match_ptr_set" : i8[::1]})
 def declare_match(memset, flattener, match_ptrs):
     if(len(match_ptrs) > 1):
 
         m = _struct_from_ptr(CREObjType, match_ptrs[0])
         t_id, _, _ = decode_idrec(m.idrec)
-        var = flattener.get_base_var(t_id, cre_obj_get_item(m, unicode_type,0))
+        var = flattener.base_var_map[(t_id, cre_obj_get_item(m, unicode_type,0))]
         tup =  TF(f"Sel:", var)
         arg_tup = new_gval(tup,"")
         memset.declare(arg_tup)
@@ -203,7 +203,7 @@ def declare_match(memset, flattener, match_ptrs):
         for i, m_ptr in enumerate(match_ptrs[1:]):
             m = _struct_from_ptr(CREObjType, m_ptr)
             t_id, _, _ = decode_idrec(m.idrec)
-            var = flattener.get_base_var(t_id, cre_obj_get_item(m, unicode_type,0))
+            var = flattener.base_var_map[(t_id, cre_obj_get_item(m, unicode_type,0))]
             tup =  TF(f"Arg{i}:", var)
             arg_tup = new_gval(tup,"")
             memset.declare(arg_tup)
