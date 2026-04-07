@@ -120,7 +120,7 @@ def Equals(a, b):
 @CREFunc(signature=f8(f8,f8),
     shorthand = '{0} + {1}',
     commutes=True)
-def Add(a, b):
+def Add(a, b):  # NOTE: also used by factoring via SumEqualsB
     return a + b
 
 @CREFunc(signature=f8(f8,f8))
@@ -143,7 +143,7 @@ def Subtract(a, b):
 @CREFunc(signature=f8(f8,f8),
     shorthand = '{0} * {1}',
     commutes=True)
-def Multiply(a, b):
+def Multiply(a, b):  # NOTE: also used by factoring via IsFactorPairOfC
     return a * b
 
 @CREFunc(signature=f8(f8,f8),
@@ -324,7 +324,50 @@ def AveragePrior(a, b):
     """Combine earlier results (simple average)."""
     return (a + b) / 2
 
+# =============================================================================
+# Trinomial Factoring
+# Supports the factor table scaffold: find p, q such that p*q==c and p+q==b,
+# then build binomial expressions and the final factored form.
+# =============================================================================
+
+@CREFunc(signature=boolean(f8, f8, f8),
+    shorthand='{0} * {1} == {2}',
+    commutes=True)
+def IsFactorPairOfC(p, q, c):
+    """Check if p * q == c (factor table: col1 * col2 == c)."""
+    return p * q == c
+
+@CREFunc(signature=boolean(f8, f8, f8),
+    shorthand='{0} + {1} == {2}',
+    commutes=True)
+def SumEqualsB(p, q, b):
+    """Check if p + q == b (factor table: 'Sum equals b?' checkbox)."""
+    return p + q == b
+
+@CREFunc(signature=boolean(f8, f8, f8, f8),
+    shorthand='valid_factors({0},{1},{2},{3})',
+    commutes=True)
+def ValidFactorPair(p, q, b, c):
+    """Check if p and q satisfy both p*q==c and p+q==b."""
+    return (p * q == c) and (p + q == b)
+
+@CREFunc(signature=string(f8),
+    shorthand='make_binomial({0})')
+def MakeBinomial(p):
+    """Build a binomial string like '(x + 3)'"""
+    if p >= 0:
+        return f"(x + {int(p)})"
+    else:
+        return f"(x - {int(abs(p))})"
+
+@CREFunc(signature=string(f8, f8),
+    shorthand='factored_form({0},{1})')
+def FactoredForm(p, q):
+    """Combine two factors into the final factored form, e.g. (x + 3)(x - 2)."""
+    def fmt(v):
+        return f"+ {int(v)}" if v >= 0 else f"- {int(abs(v))}"
+    return f"(x {fmt(p)})(x {fmt(q)})"
+
 ##### Define all CREFuncs above this line #####
 
 register_all_funcs()
-

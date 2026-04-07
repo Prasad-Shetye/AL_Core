@@ -195,18 +195,22 @@ def declare_match(memset, flattener, match_ptrs):
 
         m = _struct_from_ptr(CREObjType, match_ptrs[0])
         t_id, _, _ = decode_idrec(m.idrec)
-        var = flattener.base_var_map[(t_id, cre_obj_get_item(m, unicode_type,0))]
-        tup =  TF(f"Sel:", var)
-        arg_tup = new_gval(tup,"")
-        memset.declare(arg_tup)
+        key = (t_id, cre_obj_get_item(m, unicode_type,0))
+        if key in flattener.base_var_map:
+            var = flattener.base_var_map[key]
+            tup =  TF(f"Sel:", var)
+            arg_tup = new_gval(tup,"")
+            memset.declare(arg_tup)
 
         for i, m_ptr in enumerate(match_ptrs[1:]):
             m = _struct_from_ptr(CREObjType, m_ptr)
             t_id, _, _ = decode_idrec(m.idrec)
-            var = flattener.base_var_map[(t_id, cre_obj_get_item(m, unicode_type,0))]
-            tup =  TF(f"Arg{i}:", var)
-            arg_tup = new_gval(tup,"")
-            memset.declare(arg_tup)
+            key = (t_id, cre_obj_get_item(m, unicode_type,0))
+            if key in flattener.base_var_map:
+                var = flattener.base_var_map[key]
+                tup =  TF(f"Arg{i}:", var)
+                arg_tup = new_gval(tup,"")
+                memset.declare(arg_tup)
 
 
 
