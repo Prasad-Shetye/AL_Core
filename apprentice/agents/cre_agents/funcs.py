@@ -1,4 +1,4 @@
-from numba.types import f8, string, boolean
+from numba.types import f8, string, boolean, UniTuple, unicode_type
 from apprentice.agents.cre_agents.extending import registries, new_register_decorator, new_register_all
 from apprentice.agents.cre_agents.environment import TextField
 from cre import CREFunc
@@ -6,40 +6,6 @@ import numpy as np
 
 register_func = new_register_decorator("func", full_descr="CREFunc")
 register_all_funcs = new_register_all("func", types=[CREFunc], full_descr="CREFunc")
-
-@CREFunc(signature=string(string), shorthand='exp_mult_pow({0})')
-def MultiplyExponents(s):
-    i_close = s.index(')')       # position of ')'
-    j_open  = s.index('^{', i_close + 1)  # must be right after ')'
-    k_end   = s.index('}', j_open + 2)
-    e2 = s[j_open + 2 : k_end]
-
-    inner = s[1 : i_close]       # "base^{e1}"
-    i_pow  = inner.index('^{')
-    k1_end = inner.index('}', i_pow + 2)
-    base = inner[:i_pow]
-    e1   = inner[i_pow + 2 : k1_end]
-
-    out = base + "^{" + e1 + " \\cdot " + e2 + "}"
-    return out
-
-@CREFunc(signature=string(string), shorthand='exp_power_rule({0})')
-def PowerRule(s):
-    s = s.rsplit("/", 1)[-1].strip()   # e.g., "675^{6 \cdot 6}"
-
-    i_pow = s.index('^{')              # start of exponent
-    j_open = i_pow + 2                 # first char inside '{'
-    k_end = s.index('}', j_open)       # closing '}'
-
-    base = s[:i_pow]                   # "675"
-    exp_str = s[j_open:k_end]          # "6 \cdot 6"
-
-    a_str, b_str = exp_str.split(r'\cdot')  # exactly two factors
-    a = int(a_str.strip())
-    b = int(b_str.strip())
-
-    out = base + "^{" + str(a * b) + "}"
-    return out
 
 # --- Product rule: a^{m} * a^{n}  ->  a^{m + n}
 @CREFunc(signature=string(string), shorthand='exp_product_rule({0})')
@@ -84,30 +50,36 @@ def SimplifyProduct(s: str) -> str:
 # --- Quotient rule: a^{m} / a^{n}  ->  a^{m - n}
 @CREFunc(signature=string(string), shorthand='exp_quotient_rule({0})')
 def QuotientRule(s: str) -> str:
-    s = s.rsplit("/", 1)[-1].strip()
-    left, right = [t.strip() for t in s.split('/', 1)]
+    # print("INITIAL PROBLEM", s)
 
-    iL = left.index('^{'); jL = iL + 2; kL = left.index('}', jL)
-    baseL = left[:iL]
-    m = left[jL:kL].strip()
+    inner = s[len(r"\frac{"):-1]
+    left, right = inner.split("}{")
 
-    iR = right.index('^{'); jR = iR + 2; kR = right.index('}', jR)
-    baseR = right[:iR]
-    n = right[jR:kR].strip()
+    baseL, m = left.split("^{")
+    m = m[:-1]
+    baseR, n = right.split("^{")
+    n = n[:-1]
+
+    # print("FOUND M", baseL, m)
+    # print("FOUND N", baseR, n)
 
     if baseL != baseR:
         raise ValueError("QuotientRule expects matching bases.")
 
-    return f"{baseL}^{{{m} - {n}}}"
+    return f"{baseL}^{{-{n} + {m}}}"
 
 
 @CREFunc(signature=string(string), shorthand='exp_quotient_simplify({0})')
 def SimplifyQuotient(s: str) -> str:
-    s = s.rsplit("/", 1)[-1].strip()
+    # s = s.rsplit("/", 1)[-1].strip()
     i = s.index('^{'); j = i + 2; k = s.index('}', j)
+    print("I", i)
     base = s[:i]
-    m_str, n_str = [t.strip() for t in s[j:k].split('-', 1)]
-    val = int(m_str) - int(n_str)
+    print("BASE", base)
+    n_str, m_str = [t.strip() for t in s[j:k].split('+', 1)]
+    print("M and N", m_str, n_str)
+    val = int(m_str) + int(n_str)
+    print("VAL", val)
     return f"{base}^{{{val}}}"
 
 
