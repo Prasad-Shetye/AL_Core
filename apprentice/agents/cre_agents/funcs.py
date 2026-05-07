@@ -1,4 +1,4 @@
-from numba.types import f8, string, boolean, UniTuple, unicode_type
+from numba.types import f8, string, boolean
 from apprentice.agents.cre_agents.extending import registries, new_register_decorator, new_register_all
 from apprentice.agents.cre_agents.environment import TextField
 from cre import CREFunc
@@ -6,6 +6,40 @@ import numpy as np
 
 register_func = new_register_decorator("func", full_descr="CREFunc")
 register_all_funcs = new_register_all("func", types=[CREFunc], full_descr="CREFunc")
+
+@CREFunc(signature=string(string), shorthand='exp_mult_pow({0})')
+def MultiplyExponents(s):
+    i_close = s.index(')')       # position of ')'
+    j_open  = s.index('^{', i_close + 1)  # must be right after ')'
+    k_end   = s.index('}', j_open + 2)
+    e2 = s[j_open + 2 : k_end]
+
+    inner = s[1 : i_close]       # "base^{e1}"
+    i_pow  = inner.index('^{')
+    k1_end = inner.index('}', i_pow + 2)
+    base = inner[:i_pow]
+    e1   = inner[i_pow + 2 : k1_end]
+
+    out = base + "^{" + e1 + " \\cdot " + e2 + "}"
+    return out
+
+@CREFunc(signature=string(string), shorthand='exp_power_rule({0})')
+def PowerRule(s):
+    s = s.rsplit("/", 1)[-1].strip()   # e.g., "675^{6 \cdot 6}"
+
+    i_pow = s.index('^{')              # start of exponent
+    j_open = i_pow + 2                 # first char inside '{'
+    k_end = s.index('}', j_open)       # closing '}'
+
+    base = s[:i_pow]                   # "675"
+    exp_str = s[j_open:k_end]          # "6 \cdot 6"
+
+    a_str, b_str = exp_str.split(r'\cdot')  # exactly two factors
+    a = int(a_str.strip())
+    b = int(b_str.strip())
+
+    out = base + "^{" + str(a * b) + "}"
+    return out
 
 # --- Product rule: a^{m} * a^{n}  ->  a^{m + n}
 @CREFunc(signature=string(string), shorthand='exp_product_rule({0})')
@@ -92,7 +126,7 @@ def Equals(a, b):
 @CREFunc(signature=f8(f8,f8),
     shorthand = '{0} + {1}',
     commutes=True)
-def Add(a, b):  # NOTE: also used by factoring via SumEqualsB
+def Add(a, b):
     return a + b
 
 @CREFunc(signature=f8(f8,f8))
@@ -115,7 +149,7 @@ def Subtract(a, b):
 @CREFunc(signature=f8(f8,f8),
     shorthand = '{0} * {1}',
     commutes=True)
-def Multiply(a, b):  # NOTE: also used by factoring via IsFactorPairOfC
+def Multiply(a, b):
     return a * b
 
 @CREFunc(signature=f8(f8,f8),
